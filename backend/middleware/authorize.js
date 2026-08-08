@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const createAuditLog = require("../utils/auditLogger");
 
 const authorize = (requiredPermission) => {
     return async (req, res, next) => {
@@ -22,11 +23,22 @@ const authorize = (requiredPermission) => {
             );
 
             if (result.rows.length === 0) {
+
+                await createAuditLog({
+                    userId,
+                    action: requiredPermission,
+                    resource: req.originalUrl,
+                    result: "DENIED",
+                    details: "User does not have required permission"
+                });
+
                 return res.status(403).json({
                     message: "Access denied",
                     requiredPermission
                 });
             }
+
+            req.requiredPermission = requiredPermission;
 
             next();
 
