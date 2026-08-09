@@ -21,13 +21,16 @@ function AuditLogs() {
 
   const fetchLogs = async () => {
     try {
+      setLoading(true);
+      setError("");
+
       const response = await api.get("/audit-logs");
 
       setLogs(response.data.logs || []);
     } catch (error) {
       setError(
         error.response?.data?.message ||
-        "Unable to fetch audit logs"
+          "Unable to fetch audit logs"
       );
     } finally {
       setLoading(false);
@@ -75,9 +78,10 @@ function AuditLogs() {
 
           <button
             onClick={fetchLogs}
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium"
+            disabled={loading}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium"
           >
-            Refresh
+            {loading ? "Refreshing..." : "Refresh"}
           </button>
 
         </div>
@@ -177,6 +181,7 @@ function AuditLogs() {
                       <td className="px-6 py-4">
 
                         <div>
+
                           <p className="font-medium text-slate-800">
                             {log.user_name || "Unknown User"}
                           </p>
@@ -184,6 +189,7 @@ function AuditLogs() {
                           <p className="text-xs text-slate-400 mt-1">
                             {log.email}
                           </p>
+
                         </div>
 
                       </td>

@@ -30,38 +30,53 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [rolesResponse, auditResponse] =
-        await Promise.all([
-          api.get("/roles"),
-          api.get("/audit-logs"),
-        ]);
-
-      const logs = auditResponse.data.logs || [];
-
-      const allowed = logs.filter(
-        (log) => log.result === "ALLOWED"
-      ).length;
-
-      const denied = logs.filter(
-        (log) => log.result === "DENIED"
-      ).length;
+      const permissions = user.permissions || [];
 
       let totalUsers = 0;
+      let totalRoles = 0;
+      let allowed = 0;
+      let denied = 0;
 
-      // Only fetch users if this user has permission
-      if (user.permissions?.includes("user.view")) {
-        const usersResponse = await api.get("/users");
+      // Fetch users only when permitted
+      if (permissions.includes("user.view")) {
+        const response = await api.get("/users");
 
         totalUsers =
-          usersResponse.data.users?.length || 0;
+          response.data.users?.length || 0;
+      }
+
+      // Get roles
+      try {
+        const response = await api.get("/roles");
+
+        totalRoles =
+          response.data.roles?.length || 0;
+      } catch (error) {
+        console.log("Unable to fetch roles");
+      }
+
+      // Fetch audit logs only when permitted
+      if (permissions.includes("audit.view")) {
+        const response = await api.get("/audit-logs");
+
+        const logs = response.data.logs || [];
+
+        allowed = logs.filter(
+          (log) => log.result === "ALLOWED"
+        ).length;
+
+        denied = logs.filter(
+          (log) => log.result === "DENIED"
+        ).length;
       }
 
       setStats({
         users: totalUsers,
-        roles: rolesResponse.data.roles?.length || 0,
+        roles: totalRoles,
         allowed,
         denied,
       });
+
     } catch (error) {
       console.error(
         "Dashboard error:",
@@ -106,9 +121,13 @@ function Dashboard() {
               value={
                 user.permissions?.includes("user.view")
                   ? stats.users
-                  : "Restricted"
+                  : "—"
               }
-              description="Registered identities"
+              description={
+                user.permissions?.includes("user.view")
+                  ? "Registered identities"
+                  : "Access restricted"
+              }
             />
 
             <StatCard
@@ -121,15 +140,31 @@ function Dashboard() {
             <StatCard
               icon={<CheckCircle2 size={21} />}
               title="Allowed"
-              value={stats.allowed}
-              description="Successful access attempts"
+              value={
+                user.permissions?.includes("audit.view")
+                  ? stats.allowed
+                  : "—"
+              }
+              description={
+                user.permissions?.includes("audit.view")
+                  ? "Successful access attempts"
+                  : "Access restricted"
+              }
             />
 
             <StatCard
               icon={<XCircle size={21} />}
               title="Denied"
-              value={stats.denied}
-              description="Blocked access attempts"
+              value={
+                user.permissions?.includes("audit.view")
+                  ? stats.denied
+                  : "—"
+              }
+              description={
+                user.permissions?.includes("audit.view")
+                  ? "Blocked access attempts"
+                  : "Access restricted"
+              }
             />
 
           </div>
@@ -146,6 +181,7 @@ function Dashboard() {
             </div>
 
             <div>
+
               <h2 className="font-semibold text-slate-900">
                 Your IAM Access
               </h2>
@@ -153,9 +189,11 @@ function Dashboard() {
               <p className="text-sm text-slate-500">
                 Permissions assigned to your role
               </p>
+
             </div>
 
           </div>
+
 
           <div className="flex items-center gap-3 mb-5">
 
@@ -164,7 +202,7 @@ function Dashboard() {
             </span>
 
             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold">
-              {user.role}
+              {user.role || "UNKNOWN"}
             </span>
 
           </div>
@@ -172,7 +210,7 @@ function Dashboard() {
 
           <div className="flex flex-wrap gap-2">
 
-            {user.permissions?.map((permission) => (
+            {(user.permissions || []).map((permission) => (
 
               <span
                 key={permission}
